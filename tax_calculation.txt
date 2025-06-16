@@ -1,0 +1,13 @@
+
+=== Tax Calculation Results ===
+Total Income: Rs.20,450.00
+
+Old Regime Details:
+  HRA Exemption: Rs.6,758.00
+  80C Deduction: Rs.6,532.00
+  Standard Deduction: Rs.50,000.00
+  Tax Deduction: Rs.0.00
+
+New Regime Details:
+  Tax Deduction: Rs.0.00
+Both regimes result in the same tax amount.

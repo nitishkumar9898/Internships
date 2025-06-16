@@ -1,0 +1,106 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns  
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
+
+
+try:
+    df = pd.read_csv('anetflix_titles.csv')
+except FileNotFoundError:
+    print("Error: File not found. Please check the file path.")
+    exit()
+
+
+print("Initial Data Info:")
+print(df.info())
+print("\nMissing Values:")
+print(df.isnull().sum())
+
+
+if 'release_year' in df.columns:
+    df['release_year'] = df['release_year'].fillna(df['release_year'].median())
+else:
+    print("Warning: 'release_year' column not found.")
+
+if 'duration' in df.columns:
+    
+    df['duration'] = df['duration'].str.extract('(\d+)').astype(float)  
+    df['duration'] = df['duration'].fillna(df['duration'].median()).astype(int)
+else:
+    print("Warning: 'duration' column not found.")
+
+
+if 'views' in df.columns:
+    df['views'] = df['views'].fillna(df['views'].median())
+else:
+    print("Note: 'views' column not found in the dataset. Skipping.")
+
+if 'listed_in' in df.columns:  
+    df['listed_in'] = df['listed_in'].fillna(df['listed_in'].mode()[0])
+else:
+    print("Warning: 'listed_in' (genre) column not found.")
+
+if 'rating' in df.columns:
+    df['rating'] = df['rating'].fillna('Unknown')
+else:
+    print("Warning: 'rating' column not found.")
+
+df = df.drop_duplicates(subset=['title', 'release_year'], keep='first')
+
+if 'release_year' in df.columns:
+    df['release_year'] = df['release_year'].astype(int)
+
+def remove_outliers(df, column):
+    if column in df.columns and df[column].notnull().any():
+        Q1 = df[column].quantile(0.25)
+        Q3 = df[column].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        df = df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+    return df
+
+df = remove_outliers(df, 'duration')
+
+df['duration_category'] = pd.cut(df['duration'],
+                               bins=[0, 30, 60, 120, float('inf')],
+                               labels=['Short', 'Medium', 'Long', 'Very Long'])
+
+
+df['release_period'] = pd.cut(df['release_year'],
+                            bins=[0, 2000, 2010, 2020, float('inf')],
+                            labels=['Pre-2000', '2000-2010', '2010-2020', 'Post-2020'])
+
+
+le = LabelEncoder()
+if 'listed_in' in df.columns:
+    df['genre_encoded'] = le.fit_transform(df['listed_in'])
+if 'rating' in df.columns:
+    df['rating_encoded'] = le.fit_transform(df['rating'])
+
+
+print("\nSummary Statistics:")
+print(df.describe())
+
+
+plt.figure(figsize=(10, 8))
+sns.heatmap(df.isnull(), cbar=False, cmap='viridis')
+plt.title('Missing Values Heatmap')
+plt.savefig('missing_values_heatmap.png')
+plt.close()
+
+numerical_cols = df.select_dtypes(include=[np.number]).columns
+if len(numerical_cols) > 1:  
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(df[numerical_cols].corr(), annot=True, cmap='coolwarm')
+    plt.title('Correlation Matrix')
+    plt.savefig('correlation_matrix.png')
+    plt.close()
+else:
+    print("Note: Not enough numerical columns for correlation matrix.")
+
+df.to_csv('netflix_cleaned.csv', index=False)
+
+print("Data cleaning completed. Cleaned dataset saved as 'netflix_cleaned.csv'")
+print("Visualizations saved as 'missing_values_heatmap.png' and 'correlation_matrix.png'")
